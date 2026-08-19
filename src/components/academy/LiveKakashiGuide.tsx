@@ -24,6 +24,7 @@ import {
   Play
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useSession } from 'next-auth/react';
 
 export interface GuideStepConfig {
   id: string;
@@ -295,23 +296,12 @@ export const GUIDE_STEPS: GuideStepConfig[] = [
 export const LiveKakashiGuide: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session, status: authStatus } = useSession();
   const { showGuideAcademy, openGuideAcademy, closeGuideAcademy, syllabus } = useApp();
 
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
-
-  // Check if onboarding is active on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isCompleted = localStorage.getItem('hasCompletedKakashiGuide');
-      // Only auto-open if entered academy and not completed
-      const hasEntered = sessionStorage.getItem('aniskill_academy_entered');
-      if (isCompleted !== 'true' && hasEntered === 'true') {
-        openGuideAcademy();
-      }
-    }
-  }, [openGuideAcademy]);
 
   // SMART STEP ROUTE AUTO-ADAPTATION
   useEffect(() => {
@@ -417,7 +407,8 @@ export const LiveKakashiGuide: React.FC = () => {
     return () => clearInterval(interval);
   }, [pathname, showGuideAcademy, currentStepIndex]);
 
-  if (!showGuideAcademy) return null;
+  const isAuthRoute = !pathname || pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname.startsWith('/api');
+  if (authStatus !== 'authenticated' || isAuthRoute || !showGuideAcademy) return null;
 
   const handleNext = () => {
     if (isLastStep) {

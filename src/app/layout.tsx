@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppProvider } from '../context/AppContext';
 import { AuthProvider } from '../components/providers/AuthProvider';
-import { LiveKakashiGuide } from '../components/academy/LiveKakashiGuide';
 
 export const metadata: Metadata = {
   title: 'ANISKILL — God-Level Anime Syllabus Tracker & Accountability Platform',
@@ -21,7 +20,6 @@ export default function RootLayout({
         <AuthProvider>
           <AppProvider>
             {children}
-            <LiveKakashiGuide />
           </AppProvider>
         </AuthProvider>
       </body>

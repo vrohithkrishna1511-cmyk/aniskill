@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Flame, Shield, Zap, Volume2, VolumeX, Menu, X, Timer } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { RANKS_DATA } from '../../data/mockData';
+import { LiveKakashiGuide } from '../academy/LiveKakashiGuide';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -103,6 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
         </div>
       </div>
       </header>
+      <LiveKakashiGuide />
     </>
   );
 };
