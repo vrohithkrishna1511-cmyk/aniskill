@@ -1,30 +1,30 @@
-datasource db {
-    provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
 model User {
-  id                    String        @id @default(uuid())
-  googleId              String?       @unique
-  email                 String        @unique
+  id                    String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  googleId              String?            @unique @map("google_id")
+  email                 String             @unique
   name                  String
-  shinobiName           String
+  shinobiName           String             @map("shinobi_name")
   nickname              String?
-  avatarUrl             String?
-  dailyAvailableMinutes Int           @default(60)
-  currentStreak         Int           @default(0)
-  bestStreak            Int           @default(0)
-  totalXp               Int           @default(0)
-  chakra                Int           @default(100)
-  rank                  String        @default("NINJA_STUDENT")
-  lastActiveDate        String?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  avatarUrl             String?            @map("avatar_url")
+  dailyAvailableMinutes Int                @default(60) @map("daily_available_minutes")
+  currentStreak         Int                @default(0) @map("current_streak")
+  bestStreak            Int                @default(0) @map("best_streak")
+  totalXp               Int                @default(0) @map("total_xp")
+  chakra                Int                @default(100)
+  rank                  String             @default("NINJA_STUDENT")
+  lastActiveDate        String?            @map("last_active_date")
+  createdAt             DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   subjects              Subject[]
   studySessions         StudySession[]
@@ -32,151 +32,183 @@ model User {
   quizAttempts          QuizAttempt[]
   exams                 Exam[]
   restDays              ShinobiRest[]
-  createdRooms          RivalryRoom[]  @relation("RoomCreator")
-  joinedRooms           RivalryRoom[]  @relation("RoomOpponent")
+  createdRooms          RivalryRoom[]      @relation("RoomCreator")
+  joinedRooms           RivalryRoom[]      @relation("RoomOpponent")
   rivalrySessions       RivalrySession[]
+
+  @@map("profiles")
 }
 
 model Subject {
-  id            String   @id @default(uuid())
-  userId        String
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
   title         String
-  icon          String   @default("BookOpen")
-  color         String   @default("#FF6B00")
-  order         Int      @default(0)
-  currentStreak Int      @default(0)
-  bestStreak    Int      @default(0)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  icon          String    @default("BookOpen")
+  color         String    @default("#FF6B00")
+  order         Int       @default(0)
+  currentStreak Int       @default(0) @map("current_streak")
+  bestStreak    Int       @default(0) @map("best_streak")
+  createdAt     DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   courses       Course[]
+
+  @@map("subjects")
 }
 
 model Course {
-  id          String   @id @default(uuid())
-  subjectId   String
-  title       String
-  order       Int      @default(0)
-  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  todoItems   TodoItem[]
+  id        String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  subjectId String     @map("subject_id") @db.Uuid
+  title     String
+  order     Int        @default(0)
+  createdAt DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
+  subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  todoItems TodoItem[]
+
+  @@map("courses")
 }
 
 model TodoItem {
-  id                  String   @id @default(uuid())
-  courseId            String
+  id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  courseId            String    @map("course_id") @db.Uuid
   title               String
-  normalizedTitle     String?
+  normalizedTitle     String?   @map("normalized_title")
   description         String?
-  order               Int      @default(0)
-  difficulty          String   @default("MEDIUM")
-  estimatedMinutes    Int      @default(20)
-  estimatedMinMinutes Int      @default(15)
-  estimatedMaxMinutes Int      @default(30)
-  targetMinutes       Int      @default(20)
-  actualMinutes       Int      @default(0)
-  attemptCount        Int      @default(0)
-  status              String   @default("NOT_STARTED")
-  completedAt         DateTime?
-  progress            Float    @default(0.0)
-  quizScore           Float?
-  knowledgeConfidence Float    @default(0.0)
-  lastStudiedAt       DateTime?
-  course              Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order               Int       @default(0)
+  difficulty          String    @default("MEDIUM")
+  estimatedMinutes    Int       @default(20) @map("estimated_minutes")
+  estimatedMinMinutes Int       @default(15) @map("estimated_min_minutes")
+  estimatedMaxMinutes Int       @default(30) @map("estimated_max_minutes")
+  targetMinutes       Int       @default(20) @map("target_minutes")
+  actualMinutes       Int       @default(0) @map("actual_minutes")
+  attemptCount        Int       @default(0) @map("attempt_count")
+  status              String    @default("NOT_STARTED")
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(6)
+  progress            Float     @default(0.0)
+  quizScore           Float?    @map("quiz_score")
+  knowledgeConfidence Float     @default(0.0) @map("knowledge_confidence")
+  lastStudiedAt       DateTime? @map("last_studied_at") @db.Timestamptz(6)
+  createdAt           DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
+  course              Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("todo_items")
 }
 
 model StudySession {
-  id              String   @id @default(uuid())
-  userId          String
-  subjectId       String?
-  startedAt       DateTime @default(now())
-  stoppedAt       DateTime?
-  durationSeconds Int      @default(0)
-  status          String   @default("IN_PROGRESS")
-  itemsCovered    String   // JSON string of TodoItem titles/ids
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  subjectId       String?   @map("subject_id") @db.Uuid
+  startedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("started_at") @db.Timestamptz(6)
+  stoppedAt       DateTime? @map("stopped_at") @db.Timestamptz(6)
+  durationSeconds Int       @default(0) @map("duration_seconds")
+  status          String    @default("IN_PROGRESS")
+  itemsCovered    String    @default("[]") @map("items_covered")
+  createdAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("study_sessions")
 }
 
 model DailyStudyRecord {
-  id             String   @id @default(uuid())
-  userId         String
-  date           String   // YYYY-MM-DD
-  totalSeconds   Int      @default(0)
-  isCompleted    Boolean  @default(false)
-  quizScore      Float?
-  streakCount    Int      @default(0)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  date         String
+  totalSeconds Int      @default(0) @map("total_seconds")
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  quizScore    Float?   @map("quiz_score")
+  streakCount  Int      @default(0) @map("streak_count")
+  createdAt    DateTime @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+  @@map("daily_study_records")
 }
 
 model QuizAttempt {
-  id              String   @id @default(uuid())
-  userId          String
-  subjectId       String?
-  sessionId       String?
-  date            String
-  attemptNumber   Int      @default(1)
-  questions       String   // JSON string
-  answers         String   // JSON string
-  score           Float
-  confidence      Float
-  passed          Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  subjectId     String?  @map("subject_id") @db.Uuid
+  sessionId     String?  @map("session_id") @db.Uuid
+  date          String
+  attemptNumber Int      @default(1) @map("attempt_number")
+  questions     String
+  answers       String
+  score         Float
+  confidence    Float
+  passed        Boolean  @default(false)
+  createdAt     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_attempts")
 }
 
 model Exam {
-  id        String   @id @default(uuid())
-  userId    String
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   subject   String
-  subjectId String?  // ID of the Subject from user's syllabus
-  examDate  String   // YYYY-MM-DD
-  planData  String?  // JSON string storing exam preparation plan & feasibility details
-  createdAt DateTime @default(now())
+  subjectId String?  @map("subject_id") @db.Uuid
+  examDate  String   @map("exam_date")
+  planData  String?  @map("plan_data")
+  createdAt DateTime @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("exams")
 }
 
 model ShinobiRest {
-  id                   String   @id @default(uuid())
-  userId               String
-  restDate             String   // YYYY-MM-DD
+  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  restDate             String   @map("rest_date")
   reason               String?
-  acceptedAt           DateTime @default(now())
-  originalMissionDate  String?
-  postponedMissionDate String?
+  acceptedAt           DateTime @default(dbgenerated("timezone('utc'::text, now())")) @map("accepted_at") @db.Timestamptz(6)
+  originalMissionDate  String?  @map("original_mission_date")
+  postponedMissionDate String?  @map("postponed_mission_date")
+
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shinobi_rests")
 }
 
 model RivalryRoom {
-  id          String   @id @default(uuid())
-  roomCode    String   @unique
-  creatorId   String
-  opponentId  String?
-  subjectId   String?
-  subjectName String?
-  mode        String   @default("1 HOUR")
-  status      String   @default("WAITING") // WAITING, ACTIVE, COMPLETED, FORFEITED
-  winnerId    String?
-  createdAt   DateTime @default(now())
-  startedAt   DateTime?
-  endedAt     DateTime?
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  roomCode    String    @unique @map("room_code")
+  creatorId   String    @map("creator_id") @db.Uuid
+  opponentId  String?   @map("opponent_id") @db.Uuid
+  subjectId   String?   @map("subject_id") @db.Uuid
+  subjectName String?   @map("subject_name")
+  mode        String    @default("1 HOUR")
+  status      String    @default("WAITING")
+  winnerId    String?   @map("winner_id") @db.Uuid
+  createdAt   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
+  endedAt     DateTime? @map("ended_at") @db.Timestamptz(6)
 
-  creator     User     @relation("RoomCreator", fields: [creatorId], references: [id])
-  opponent    User?    @relation("RoomOpponent", fields: [opponentId], references: [id])
+  creator     User      @relation("RoomCreator", fields: [creatorId], references: [id])
+  opponent    User?     @relation("RoomOpponent", fields: [opponentId], references: [id])
   sessions    RivalrySession[]
+
+  @@map("rivalry_rooms")
 }
 
 model RivalrySession {
-  id               String   @id @default(uuid())
-  roomId           String
-  userId           String
-  startedAt        DateTime @default(now())
-  stoppedAt        DateTime?
-  durationSeconds  Int      @default(0)
-  status           String   @default("TRAINING") // TRAINING, STOPPED, FORFEITED
-  assignedItems    String   // JSON string of TodoItem titles/ids
-  completedItems   String   // JSON string of TodoItem titles/ids
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  roomId          String    @map("room_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  startedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("started_at") @db.Timestamptz(6)
+  stoppedAt       DateTime? @map("stopped_at") @db.Timestamptz(6)
+  durationSeconds Int       @default(0) @map("duration_seconds")
+  status          String    @default("TRAINING")
+  assignedItems   String    @default("[]") @map("assigned_items")
+  completedItems  String    @default("[]") @map("completed_items")
 
-  room             RivalryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room            RivalryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rivalry_sessions")
 }
-
-// triggering a fresh vercel build
