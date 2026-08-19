@@ -3,6 +3,39 @@ import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 
+export function getAuthBaseUrl(): string {
+  if (process.env.NEXTAUTH_URL) {
+    if (process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL.includes('localhost')) {
+      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+        return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+      }
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+      }
+      return 'https://aniskill-qt1g.vercel.app';
+    }
+    return process.env.NEXTAUTH_URL;
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://aniskill-qt1g.vercel.app';
+  }
+  return 'http://localhost:3000';
+}
+
+const authBaseUrl = getAuthBaseUrl();
+if (!process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL.includes('localhost'))) {
+  process.env.NEXTAUTH_URL = authBaseUrl;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -56,6 +89,21 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      const currentBaseUrl = getAuthBaseUrl();
+      // Allows relative callback URLs
+      if (url.startsWith('/')) return `${currentBaseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.origin === currentBaseUrl || parsedUrl.origin === baseUrl) {
+          return url;
+        }
+      } catch {
+        // invalid URL string, fallback
+      }
+      return `${currentBaseUrl}/dashboard`;
+    },
     async signIn({ user, account, profile }) {
       if (!user.email) return false;
 
