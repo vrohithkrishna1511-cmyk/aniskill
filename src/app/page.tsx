@@ -30,11 +30,11 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { updateUserProfile, saveProfileToBackend, setIntroSeen } = useApp();
 
-  // Phase State: Default to 'intro' on SSR to avoid hydration mismatch
+  // Phase State: Default to 'intro' on SSR
   const [phase, setPhase] = useState<AppPhase>('intro');
   const [mounted, setMounted] = useState(false);
 
-  // Sync phase with pathname and client storage after mount
+  // Sync phase with pathname after mount
   useEffect(() => {
     setMounted(true);
     if (pathname === '/login') {
@@ -42,10 +42,8 @@ export default function Home() {
     } else if (pathname === '/signup') {
       setPhase('signup');
     } else {
-      const seen = localStorage.getItem('aniskill_intro_seen');
-      if (seen === 'true') {
-        setPhase('login');
-      }
+      // On the root route '/', ALWAYS play the full intro video
+      setPhase('intro');
     }
   }, [pathname]);
 
@@ -58,7 +56,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEnteringAcademy, setIsEnteringAcademy] = useState(false);
 
-  // Video Autoplay: Starts the intro cleanly
+  // Video Autoplay: Starts the intro video cleanly
   useEffect(() => {
     if (phase === 'intro') {
       if (pathname === '/login') {
@@ -73,6 +71,7 @@ export default function Home() {
       if (videoRef.current) {
         const video = videoRef.current;
         video.muted = true;
+        video.currentTime = 0;
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
@@ -86,9 +85,6 @@ export default function Home() {
   // Video completion handler: Transition strictly to Google Authentication page when video ends naturally
   const handleVideoEnded = () => {
     setIntroSeen(true);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('aniskill_intro_seen', 'true');
-    }
     setPhase('login');
   };
 
