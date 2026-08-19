@@ -7,13 +7,16 @@ export function getAuthBaseUrl(): string {
   if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes('localhost')) {
     return process.env.NEXTAUTH_URL.replace(/\/$/, '');
   }
-  if (process.env.NODE_ENV === 'production') {
-    if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes('localhost')) {
-      return process.env.NEXTAUTH_URL.replace(/\/$/, '');
-    }
-    return 'https://aniskill-qt1g.vercel.app';
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/\/$/, '')}`;
   }
-  return process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
+  }
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  }
+  return 'http://localhost:3000';
 }
 
 const authBaseUrl = getAuthBaseUrl();
@@ -22,6 +25,7 @@ if (!process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' && proce
 }
 
 const isProduction = process.env.NODE_ENV === 'production' || authBaseUrl.startsWith('https://');
+
 
 export const authOptions: NextAuthOptions = {
   useSecureCookies: isProduction,
