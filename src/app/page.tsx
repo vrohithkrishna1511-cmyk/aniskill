@@ -31,8 +31,25 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { updateUserProfile, saveProfileToBackend, setIntroSeen } = useApp();
 
-  // Phase State: ALWAYS start strictly at 'intro' on initial load/mount
-  const [phase, setPhase] = useState<AppPhase>('intro');
+  // Phase State: Initialize directly based on current pathname
+  const [phase, setPhase] = useState<AppPhase>(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname === '/login') return 'login';
+      if (window.location.pathname === '/signup') return 'signup';
+      const seen = localStorage.getItem('aniskill_intro_seen');
+      if (seen === 'true') return 'academy_entry';
+    }
+    return 'intro';
+  });
+
+  // Sync phase with pathname if navigating between /login, /signup, /
+  useEffect(() => {
+    if (pathname === '/login') {
+      setPhase('login');
+    } else if (pathname === '/signup') {
+      setPhase('signup');
+    }
+  }, [pathname]);
 
   // Form states
   const [name, setName] = useState('');
@@ -43,22 +60,40 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEnteringAcademy, setIsEnteringAcademy] = useState(false);
 
-  // Ensure video autoplays cleanly on mount
+  // Video Autoplay & Network Safety Fallback
   useEffect(() => {
-    if (phase === 'intro' && videoRef.current) {
-      const video = videoRef.current;
-      video.muted = true;
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn('Autoplay attempt caught:', err);
-        });
+    if (phase === 'intro') {
+      if (pathname === '/login') {
+        setPhase('login');
+        return;
       }
-    }
-  }, [phase]);
+      if (pathname === '/signup') {
+        setPhase('signup');
+        return;
+      }
 
-  // Video completion handler: NEVER automatically redirect to dashboard.
-  // ALWAYS transition to the ACADEMY_ENTRY screen.
+      if (videoRef.current) {
+        const video = videoRef.current;
+        video.muted = true;
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Autoplay attempt caught, transitioning to academy entrance:', err);
+            setPhase('academy_entry');
+          });
+        }
+      }
+
+      // Safety timeout: If video stalls, fails to buffer over public network, or browser blocks media, transition gracefully
+      const safetyTimer = setTimeout(() => {
+        setPhase((current) => (current === 'intro' ? 'academy_entry' : current));
+      }, 6000);
+
+      return () => clearTimeout(safetyTimer);
+    }
+  }, [phase, pathname]);
+
+  // Video completion handler: Transition to the ACADEMY_ENTRY screen.
   const handleVideoEnded = () => {
     setPhase('academy_entry');
   };
@@ -195,8 +230,9 @@ export default function Home() {
           key="intro-screen"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: 'easeInOut' }}
-          className="fixed inset-0 w-full h-full z-50 bg-black flex items-center justify-center"
+          transition={{ duration: 0.6, ease: 'easeInOut' }}
+          onClick={() => setPhase('academy_entry')}
+          className="fixed inset-0 w-full h-full z-50 bg-black flex items-center justify-center cursor-pointer"
         >
           <video
             ref={videoRef}
@@ -206,8 +242,20 @@ export default function Home() {
             muted
             onEnded={handleVideoEnded}
             onError={handleVideoEnded}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover pointer-events-none"
           />
+          {/* Skip Intro Floating Action Badge */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPhase('academy_entry');
+            }}
+            className="absolute top-6 right-6 z-50 px-4 py-2 rounded-full bg-black/70 hover:bg-black/90 border border-orange-500/50 text-xs font-hud text-orange-300 hover:text-white uppercase tracking-widest transition-all cursor-pointer flex items-center space-x-2 shadow-2xl backdrop-blur-md"
+          >
+            <span>SKIP INTRO</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </motion.div>
       )}
 
