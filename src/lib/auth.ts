@@ -4,31 +4,16 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 
 export function getAuthBaseUrl(): string {
-  if (process.env.NEXTAUTH_URL) {
-    if (process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL.includes('localhost')) {
-      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-        return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-      }
-      if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}`;
-      }
-      return 'https://aniskill-qt1g.vercel.app';
-    }
-    return process.env.NEXTAUTH_URL;
-  }
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  if (process.env.RENDER_EXTERNAL_URL) {
-    return process.env.RENDER_EXTERNAL_URL;
+  if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes('localhost')) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, '');
   }
   if (process.env.NODE_ENV === 'production') {
+    if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes('localhost')) {
+      return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+    }
     return 'https://aniskill-qt1g.vercel.app';
   }
-  return 'http://localhost:3000';
+  return process.env.NEXTAUTH_URL || 'http://localhost:3000';
 }
 
 const authBaseUrl = getAuthBaseUrl();
@@ -36,7 +21,10 @@ if (!process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' && proce
   process.env.NEXTAUTH_URL = authBaseUrl;
 }
 
+const isProduction = process.env.NODE_ENV === 'production' || authBaseUrl.startsWith('https://');
+
 export const authOptions: NextAuthOptions = {
+  useSecureCookies: isProduction,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
