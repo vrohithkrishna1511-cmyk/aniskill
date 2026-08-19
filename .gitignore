@@ -45,3 +45,9 @@ __pycache__/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sqlite
+*.db
+*.db-journal
+dev.db
+prisma/dev.db
