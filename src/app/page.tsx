@@ -31,23 +31,22 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { updateUserProfile, saveProfileToBackend, setIntroSeen } = useApp();
 
-  // Phase State: Initialize directly based on current pathname
-  const [phase, setPhase] = useState<AppPhase>(() => {
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname === '/login') return 'login';
-      if (window.location.pathname === '/signup') return 'signup';
-      const seen = localStorage.getItem('aniskill_intro_seen');
-      if (seen === 'true') return 'academy_entry';
-    }
-    return 'intro';
-  });
+  // Phase State: Default to 'intro' on SSR to avoid hydration mismatch
+  const [phase, setPhase] = useState<AppPhase>('intro');
+  const [mounted, setMounted] = useState(false);
 
-  // Sync phase with pathname if navigating between /login, /signup, /
+  // Sync phase with pathname and client storage after mount
   useEffect(() => {
+    setMounted(true);
     if (pathname === '/login') {
       setPhase('login');
     } else if (pathname === '/signup') {
       setPhase('signup');
+    } else {
+      const seen = localStorage.getItem('aniskill_intro_seen');
+      if (seen === 'true') {
+        setPhase('academy_entry');
+      }
     }
   }, [pathname]);
 
