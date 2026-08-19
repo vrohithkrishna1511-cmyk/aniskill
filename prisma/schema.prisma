@@ -1,0 +1,179 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String        @id @default(uuid())
+  googleId              String?       @unique
+  email                 String        @unique
+  name                  String
+  shinobiName           String
+  nickname              String?
+  avatarUrl             String?
+  dailyAvailableMinutes Int           @default(60)
+  currentStreak         Int           @default(0)
+  bestStreak            Int           @default(0)
+  totalXp               Int           @default(0)
+  chakra                Int           @default(100)
+  rank                  String        @default("NINJA_STUDENT")
+  lastActiveDate        String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  subjects              Subject[]
+  studySessions         StudySession[]
+  dailyRecords          DailyStudyRecord[]
+  quizAttempts          QuizAttempt[]
+  exams                 Exam[]
+  restDays              ShinobiRest[]
+  createdRooms          RivalryRoom[]  @relation("RoomCreator")
+  joinedRooms           RivalryRoom[]  @relation("RoomOpponent")
+  rivalrySessions       RivalrySession[]
+}
+
+model Subject {
+  id            String   @id @default(uuid())
+  userId        String
+  title         String
+  icon          String   @default("BookOpen")
+  color         String   @default("#FF6B00")
+  order         Int      @default(0)
+  currentStreak Int      @default(0)
+  bestStreak    Int      @default(0)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courses       Course[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  subjectId   String
+  title       String
+  order       Int      @default(0)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  todoItems   TodoItem[]
+}
+
+model TodoItem {
+  id                  String   @id @default(uuid())
+  courseId            String
+  title               String
+  normalizedTitle     String?
+  description         String?
+  order               Int      @default(0)
+  difficulty          String   @default("MEDIUM")
+  estimatedMinutes    Int      @default(20)
+  estimatedMinMinutes Int      @default(15)
+  estimatedMaxMinutes Int      @default(30)
+  targetMinutes       Int      @default(20)
+  actualMinutes       Int      @default(0)
+  attemptCount        Int      @default(0)
+  status              String   @default("NOT_STARTED")
+  completedAt         DateTime?
+  progress            Float    @default(0.0)
+  quizScore           Float?
+  knowledgeConfidence Float    @default(0.0)
+  lastStudiedAt       DateTime?
+  course              Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model StudySession {
+  id              String   @id @default(uuid())
+  userId          String
+  subjectId       String?
+  startedAt       DateTime @default(now())
+  stoppedAt       DateTime?
+  durationSeconds Int      @default(0)
+  status          String   @default("IN_PROGRESS")
+  itemsCovered    String   // JSON string of TodoItem titles/ids
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyStudyRecord {
+  id             String   @id @default(uuid())
+  userId         String
+  date           String   // YYYY-MM-DD
+  totalSeconds   Int      @default(0)
+  isCompleted    Boolean  @default(false)
+  quizScore      Float?
+  streakCount    Int      @default(0)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model QuizAttempt {
+  id              String   @id @default(uuid())
+  userId          String
+  subjectId       String?
+  sessionId       String?
+  date            String
+  attemptNumber   Int      @default(1)
+  questions       String   // JSON string
+  answers         String   // JSON string
+  score           Float
+  confidence      Float
+  passed          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Exam {
+  id        String   @id @default(uuid())
+  userId    String
+  subject   String
+  subjectId String?  // ID of the Subject from user's syllabus
+  examDate  String   // YYYY-MM-DD
+  planData  String?  // JSON string storing exam preparation plan & feasibility details
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ShinobiRest {
+  id                   String   @id @default(uuid())
+  userId               String
+  restDate             String   // YYYY-MM-DD
+  reason               String?
+  acceptedAt           DateTime @default(now())
+  originalMissionDate  String?
+  postponedMissionDate String?
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RivalryRoom {
+  id          String   @id @default(uuid())
+  roomCode    String   @unique
+  creatorId   String
+  opponentId  String?
+  subjectId   String?
+  subjectName String?
+  mode        String   @default("1 HOUR")
+  status      String   @default("WAITING") // WAITING, ACTIVE, COMPLETED, FORFEITED
+  winnerId    String?
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  endedAt     DateTime?
+
+  creator     User     @relation("RoomCreator", fields: [creatorId], references: [id])
+  opponent    User?    @relation("RoomOpponent", fields: [opponentId], references: [id])
+  sessions    RivalrySession[]
+}
+
+model RivalrySession {
+  id               String   @id @default(uuid())
+  roomId           String
+  userId           String
+  startedAt        DateTime @default(now())
+  stoppedAt        DateTime?
+  durationSeconds  Int      @default(0)
+  status           String   @default("TRAINING") // TRAINING, STOPPED, FORFEITED
+  assignedItems    String   // JSON string of TodoItem titles/ids
+  completedItems   String   // JSON string of TodoItem titles/ids
+
+  room             RivalryRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
