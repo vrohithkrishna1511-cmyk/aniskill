@@ -20,7 +20,6 @@ import { CharacterRenderer } from '../components/anime/CharacterRenderer';
 
 type AppPhase = 
   | 'intro'           // Full-screen clean video playback
-  | 'academy_entry'   // "ENTER THE ACADEMY" screen ([ENTER THE ACADEMY] & [CREATE SHINOBI ACCOUNT])
   | 'login'           // Sign in screen (Google OAuth + Email/Password)
   | 'signup';         // Register screen (Shinobi Name, Email, Password, Confirm)
 
@@ -45,7 +44,7 @@ export default function Home() {
     } else {
       const seen = localStorage.getItem('aniskill_intro_seen');
       if (seen === 'true') {
-        setPhase('academy_entry');
+        setPhase('login');
       }
     }
   }, [pathname]);
@@ -59,7 +58,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEnteringAcademy, setIsEnteringAcademy] = useState(false);
 
-  // Video Autoplay & Network Safety Fallback
+  // Video Autoplay: Starts the intro cleanly
   useEffect(() => {
     if (phase === 'intro') {
       if (pathname === '/login') {
@@ -77,47 +76,20 @@ export default function Home() {
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
-            console.warn('Autoplay attempt caught, transitioning to academy entrance:', err);
-            setPhase('academy_entry');
+            console.warn('Autoplay waiting/interaction required:', err);
           });
         }
       }
-
-      // Safety timeout: If video stalls, fails to buffer over public network, or browser blocks media, transition gracefully
-      const safetyTimer = setTimeout(() => {
-        setPhase((current) => (current === 'intro' ? 'academy_entry' : current));
-      }, 6000);
-
-      return () => clearTimeout(safetyTimer);
     }
   }, [phase, pathname]);
 
-  // Video completion handler: Transition to the ACADEMY_ENTRY screen.
+  // Video completion handler: Transition strictly to Google Authentication page when video ends naturally
   const handleVideoEnded = () => {
-    setPhase('academy_entry');
-  };
-
-  // Action: User clicks [ ENTER THE ACADEMY ] on the ACADEMY_ENTRY screen
-  const handleEnterAcademyClick = () => {
-    setAuthError(null);
-    if (authStatus === 'authenticated') {
-      // Existing logged-in user -> continue straight to dashboard
-      setIsEnteringAcademy(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('aniskill_academy_entered', 'true');
-      }
-      setIntroSeen(true);
-      router.push('/dashboard');
-    } else {
-      // Unauthenticated user -> show login / authentication options
-      setPhase('login');
+    setIntroSeen(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aniskill_intro_seen', 'true');
     }
-  };
-
-  // Action: User clicks [ CREATE SHINOBI ACCOUNT ]
-  const handleCreateAccountClick = () => {
-    setAuthError(null);
-    setPhase('signup');
+    setPhase('login');
   };
 
   // Credentials Login
@@ -230,8 +202,7 @@ export default function Home() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
-          onClick={() => setPhase('academy_entry')}
-          className="fixed inset-0 w-full h-full z-50 bg-black flex items-center justify-center cursor-pointer"
+          className="fixed inset-0 w-full h-full z-50 bg-black flex items-center justify-center pointer-events-none select-none"
         >
           <video
             ref={videoRef}
@@ -241,111 +212,16 @@ export default function Home() {
             muted
             onEnded={handleVideoEnded}
             onError={handleVideoEnded}
-            className="w-full h-full object-cover pointer-events-none"
+            className="w-full h-full object-cover"
           />
-          {/* Skip Intro Floating Action Badge */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPhase('academy_entry');
-            }}
-            className="absolute top-6 right-6 z-50 px-4 py-2 rounded-full bg-black/70 hover:bg-black/90 border border-orange-500/50 text-xs font-hud text-orange-300 hover:text-white uppercase tracking-widest transition-all cursor-pointer flex items-center space-x-2 shadow-2xl backdrop-blur-md"
-          >
-            <span>SKIP INTRO</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </motion.div>
       )}
 
       {/* ========================================================================= */}
-      {/* 2. ENTER THE ACADEMY SCREEN (Mandatory checkpoint after video completes)   */}
+      {/* 2. AUTHENTICATION SCREENS (Google OAuth & Credentials)                     */}
       {/* ========================================================================= */}
       <AnimatePresence mode="wait">
-        {phase === 'academy_entry' && (
-          <motion.div
-            key="academy-entry-screen"
-            initial={{ opacity: 0, scale: 0.94, y: 25 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: -20 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className="relative z-20 w-full max-w-xl text-center flex flex-col items-center justify-center p-6 sm:p-10 space-y-6"
-          >
-            {/* Background Ambient Radial Glow */}
-            <div className="absolute -inset-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-900/25 via-transparent to-transparent pointer-events-none blur-2xl -z-10" />
-
-            {/* Naruto Welcome Visual */}
-            <div className="w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center relative">
-              <CharacterRenderer
-                characterId="naruto"
-                state="welcome"
-                size="md"
-                showAura={true}
-              />
-            </div>
-
-            {/* Title Header */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-center space-x-2">
-                <Flame className="w-8 h-8 text-orange-500 animate-pulse" />
-                <h1 className="text-4xl sm:text-5xl font-hud font-extrabold tracking-[0.2em] text-white">
-                  ANISKILL
-                </h1>
-              </div>
-              <p className="text-xs sm:text-sm font-hud text-orange-400 tracking-[0.3em] uppercase font-bold">
-                ENTER THE ACADEMY
-              </p>
-              <p className="text-xs sm:text-sm text-gray-400 font-title italic">
-                Continue your Shinobi path
-              </p>
-            </div>
-
-            {/* Will of Fire Quote Banner */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#0e121e]/80 border border-orange-500/30 max-w-md mx-auto backdrop-blur-md shadow-2xl">
-              <p className="text-xs sm:text-sm font-title text-gray-200 italic leading-relaxed">
-                "THE WILL OF FIRE LIVES IN YOUR CONSISTENCY.<br />
-                <span className="text-amber-400 font-bold glow-orange-text not-italic">
-                  TRAIN DAILY. ASCEND TO HOKAGE.
-                </span>"
-              </p>
-            </div>
-
-            {/* Action Buttons: [ENTER THE ACADEMY] & [CREATE SHINOBI ACCOUNT] */}
-            <div className="flex flex-col space-y-3.5 w-full max-w-xs sm:max-w-sm mx-auto pt-2">
-              {/* Option A: ENTER THE ACADEMY */}
-              <button
-                type="button"
-                onClick={handleEnterAcademyClick}
-                disabled={isEnteringAcademy}
-                className="w-full py-4 px-6 rounded-2xl font-hud font-extrabold text-xs sm:text-sm tracking-[0.2em] text-black bg-gradient-to-r from-orange-500 via-amber-400 to-orange-600 hover:from-orange-400 hover:to-amber-300 transition-all shadow-[0_0_35px_rgba(255,107,0,0.6)] hover:shadow-[0_0_50px_rgba(255,107,0,0.85)] flex items-center justify-center space-x-3 transform hover:scale-[1.03] cursor-pointer disabled:opacity-50"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>{isEnteringAcademy ? 'INITIALIZING CHAKRA...' : 'ENTER THE ACADEMY'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              {/* Option B: CREATE SHINOBI ACCOUNT */}
-              <button
-                type="button"
-                onClick={handleCreateAccountClick}
-                disabled={isEnteringAcademy}
-                className="w-full py-3.5 px-6 rounded-2xl font-hud font-bold text-xs tracking-[0.15em] text-gray-300 hover:text-white bg-black/50 hover:bg-black/80 border border-orange-500/30 hover:border-orange-500/60 transition-all flex items-center justify-center space-x-2 transform hover:scale-[1.02] cursor-pointer disabled:opacity-50"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-                <span>CREATE SHINOBI ACCOUNT</span>
-              </button>
-            </div>
-
-            {/* Footer Subtext */}
-            <div className="text-[10px] font-hud text-gray-600 tracking-widest uppercase pt-4">
-              ANISKILL // GOD-LEVEL ANIME SYLLABUS TRACKER
-            </div>
-          </motion.div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 3. SIGN IN SCREEN                                                         */}
-        {/* ========================================================================= */}
+        {/* Sign In Screen */}
         {phase === 'login' && (
           <motion.div
             key="login-screen"
@@ -466,26 +342,12 @@ export default function Home() {
                     Create Shinobi Account
                   </button>
                 </div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthError(null);
-                      setPhase('academy_entry');
-                    }}
-                    className="text-gray-500 hover:text-gray-300 hover:underline cursor-pointer"
-                  >
-                    ← BACK TO ACADEMY ENTRANCE
-                  </button>
-                </div>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ========================================================================= */}
-        {/* 4. SIGN UP / REGISTRATION SCREEN                                          */}
-        {/* ========================================================================= */}
+        {/* Sign Up Screen */}
         {phase === 'signup' && (
           <motion.div
             key="signup-screen"
@@ -638,18 +500,6 @@ export default function Home() {
                     className="text-orange-400 font-bold hover:underline cursor-pointer ml-1"
                   >
                     Sign In
-                  </button>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthError(null);
-                      setPhase('academy_entry');
-                    }}
-                    className="text-gray-500 hover:text-gray-300 hover:underline cursor-pointer"
-                  >
-                    ← BACK TO ACADEMY ENTRANCE
                   </button>
                 </div>
               </div>
