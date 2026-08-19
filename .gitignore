@@ -51,3 +51,6 @@ next-env.d.ts
 *.db-journal
 dev.db
 prisma/dev.db
+
+# scratch
+scratch/
